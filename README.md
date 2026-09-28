@@ -1,6 +1,6 @@
-# Code zur Masterarbeit
+# SoP in Zeitungsartikeln
 
-Python-Skripte der Masterarbeit: Analyse von Sense-of-Place-Sprache in Schweizer
+Analyse von Sense-of-Place-Sprache in Schweizer
 Zeitungsartikeln (Swissdox) an zehn Standorten. Die Skripte bilden eine
 durchgehende Pipeline von der Korpus-Bereinigung bis zu Statistik und
 Diagrammen; die Ordnernummerierung (1–7) entspricht der Reihenfolge, in der
