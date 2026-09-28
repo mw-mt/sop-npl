@@ -1,0 +1,28 @@
+# Getestet mit Python 3.11.9 (laeuft voraussichtlich ab 3.10).
+# Direkte Abhaengigkeiten der Skripte, Versionen aus der Entwicklungsumgebung.
+#
+# Installation:  pip install -r requirements.txt
+# Zusaetzlich (wird von setup.ps1 erledigt, ist kein normales pip-Paket):
+#   python -m spacy download de_core_news_lg     (getestet mit 3.8.0)
+
+# Daten
+pandas==3.0.3
+numpy==2.4.6
+scipy==1.17.1
+openpyxl==3.1.5            # Excel lesen/schreiben (Lexika, Suchwort-Katalog)
+
+# Korpus-Bereinigung
+beautifulsoup4==4.15.0     # HTML-Tags entfernen
+datasketch==2.0.0          # MinHash/LSH fuer Near-Duplicates
+
+# NLP und Embeddings
+spacy==3.8.14
+gensim==4.4.0              # Word2Vec
+# spaCy importiert click direkt; neuere typer-Versionen (>=0.27) bringen es
+# nicht mehr mit -> "No module named 'click'". Beide auf die getesteten Stände festgelegt.
+click==8.4.1
+typer==0.26.7
+
+# Visualisierung
+matplotlib==3.11.0
+wordcloud==1.9.6

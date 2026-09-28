@@ -1,0 +1,142 @@
+=====================================================================
+PYTHON-BEFEHLE ZUM AUSFÜHREN ALLER SKRIPTE
+=====================================================================
+Reihenfolge = Reihenfolge der Pipeline (Ordner 1_ bis 7_, in genau dieser
+Nummerierung auch auszuführen).
+Alle Pfade sind RELATIV zum Hauptordner dieses Repos (PowerShell).
+Alle Ergebnisse landen im neuen Ordner  output/  (wird automatisch angelegt,
+ist nicht Teil des Repos, siehe .gitignore).
+
+---------------------------------------------------------------------
+0. VORBEREITUNG (einmalig)
+---------------------------------------------------------------------
+
+# Umgebung einrichten (legt .venv an, installiert requirements.txt und das
+# spaCy-Modell, trägt 6_visualisations dauerhaft in den Suchpfad ein):
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
+
+# Umgebung aktivieren (bei jedem neuen PowerShell-Fenster)
+.\.venv\Scripts\Activate.ps1
+
+# Hinweis: Die Skripte in 7_statistical_analysis importieren plot_style.py und
+# visualize_categories_v2.py aus 6_visualisations. Das erledigt setup.ps1 über
+# eine .pth-Datei in der .venv. Nur wenn du eine ANDERE Umgebung benutzt,
+# musst du in jedem neuen Fenster setzen:
+#   $env:PYTHONPATH = "$PWD\6_visualisations"
+
+
+---------------------------------------------------------------------
+1. CORPUS CLEANING  (1_corpus_cleaning)
+---------------------------------------------------------------------
+
+# 1a) Optional: TSV in lesbare Formate umwandeln (csv | excel | txt | all)
+python 1_corpus_cleaning\convert_datasets.py --input data\articles_input --output output\1_converted --format csv
+
+# 1b) Bereinigen: HTML entfernen, exakte Duplikate, Near-Duplicates (Schwelle 0.7)
+#     Erzeugt output\1_clean\<standort>_clean.tsv  (+ Duplikat-Logs)
+python 1_corpus_cleaning\clean_datasets.py --input data\articles_input --output output\1_clean --threshold 0.7
+
+
+---------------------------------------------------------------------
+2. STRATIFIZIERTES SAMPLE FÜR OPEN CODING (Taguette)  (2_sample_open_coding)
+---------------------------------------------------------------------
+python 2_sample_open_coding\sampling.py --input output\1_clean --output output\2_sample --n 50 --seed 42
+
+
+---------------------------------------------------------------------
+3. LEXIKON-ERWEITERUNG  (3_lexicon_expansion)
+---------------------------------------------------------------------
+
+# 3a) Toponym-Filter aus SwissNAMES3D bauen
+python 3_lexicon_expansion\build_toponym_filter.py --punkt swissnames3d\swissNAMES3D_PKT.csv --linie swissnames3d\swissNAMES3D_LIN.csv --polygon swissnames3d\swissNAMES3D_PLY.csv --output output\3_toponym_filter.json
+
+# 3b) NLP-Preprocessing ohne Toponyme (erzeugt corpus_for_embedding_training.txt)
+python 3_lexicon_expansion\nlp_preprocessing_no_toponyms.py --input output\1_clean --output output\3_preprocessed_no_toponyms --toponym-filter output\3_toponym_filter.json
+
+# 3c) Word2Vec-Modell trainieren (erzeugt swissdox_word2vec.model)
+python 3_lexicon_expansion\train_embeddings.py --input output\3_preprocessed_no_toponyms\corpus_for_embedding_training.txt --output output\3_models
+
+# 3d) Lexikon erweitern (Kandidatenliste als Excel zur manuellen Prüfung)
+python 3_lexicon_expansion\expand_lexicon.py --lexicon lexica\seed_lexicon.xlsx --model output\3_models\swissdox_word2vec.model --output output\3_lexicon_expansion_review.xlsx --topn 20 --threshold 0.35
+
+# 3e) Optional: Corpus für AntConc (KWIC) - lemmatisiert + Original
+python 3_lexicon_expansion\prepare_antconc.py --input output\1_clean --output output\3_antconc --toponym-filter output\3_toponym_filter.json
+
+
+---------------------------------------------------------------------
+4. FREQUENZANALYSE  (4_frequency_analysis)
+---------------------------------------------------------------------
+
+# 4a) Frequenz-Corpus bauen (T-1/T/T+1 um die Standort-Toponyme)
+python 4_frequency_analysis\build_frequency_corpus.py --input output\1_clean --output output\4_frequency_corpus
+
+# 4b) Suchwort-Katalog als JSON bauen
+python 4_frequency_analysis\build_search_catalog.py --lexicon lexica\search_term_catalogue.xlsx --output output\4_analysis\search_catalog.json
+
+# 4c) Hits-Tabelle erstellen  ->  output\4_analysis\hits.csv  UND  output\4_analysis\articles.csv
+#     (articles.csv wird automatisch neben hits.csv gespeichert)
+python 4_frequency_analysis\frequency_analysis.py --corpus output\4_frequency_corpus --catalog output\4_analysis\search_catalog.json --output output\4_analysis\hits.csv
+
+# 4d) Optional: Welche Toponyme werden als Anker verwendet / wie oft treffen sie?
+python 4_frequency_analysis\inspect_toponym_anchors.py --corpus output\4_frequency_corpus
+
+
+---------------------------------------------------------------------
+5. QUERIES  (5_queries)  - VOR den Wordclouds ausführen (liefert deren Input)
+---------------------------------------------------------------------
+
+# Einzelne Abfrage direkt im Terminal
+python 5_queries\query_hits.py --hits output\4_analysis\hits.csv --articles output\4_analysis\articles.csv --query sop_sentences_per_site
+
+# Alle Abfragen als CSV speichern (erzeugt u.a. top_terms.csv, top_terms_per_site.csv)
+python 5_queries\query_hits.py --hits output\4_analysis\hits.csv --articles output\4_analysis\articles.csv --catalog output\4_analysis\search_catalog.json --query all --output output\5_queries
+
+# Nur catalog_coverage (braucht --catalog)
+python 5_queries\query_hits.py --hits output\4_analysis\hits.csv --articles output\4_analysis\articles.csv --catalog output\4_analysis\search_catalog.json --query catalog_coverage --output output\5_queries
+
+# Weitere mögliche Werte für --query:
+#   sop_sentences_per_site, total_sentences_per_site, sop_rate_per_site,
+#   hits_per_category_site, hits_per_term_site, top_terms, top_terms_per_site,
+#   articles_with_sop, sop_per_article, category_share_per_site, catalog_coverage
+
+
+---------------------------------------------------------------------
+6. VISUALISIERUNGEN  (6_visualisations)
+---------------------------------------------------------------------
+
+# 6a) Kategorie-Diagramme (Säulen, Heatmaps, Verteilungen)
+python 6_visualisations\visualize_categories_v2.py --hits output\4_analysis\hits.csv --articles output\4_analysis\articles.csv --catalog output\4_analysis\search_catalog.json --output output\6_figures
+
+# 6b) Wordclouds (braucht top_terms.csv + top_terms_per_site.csv aus Schritt 5)
+python 6_visualisations\generate_wordclouds.py --top-terms output\5_queries\top_terms.csv --top-terms-per-site output\5_queries\top_terms_per_site.csv --output output\6_figures
+#   (Schrift: C:\Windows\Fonts\segoeui.ttf - nur unter Windows vorhanden)
+
+
+---------------------------------------------------------------------
+7. STATISTISCHE ANALYSE  (7_statistical_analysis)
+   ($env:PYTHONPATH aus Schritt 0 muss gesetzt sein, siehe dort!)
+---------------------------------------------------------------------
+
+# 7a) Cosine Similarity zwischen den Standorten
+#     erzeugt site_cosine_similarity_freq.csv und site_cosine_similarity_presence.csv
+python 7_statistical_analysis\cosine_similarity\cosine_similarity_sites.py --hits output\4_analysis\hits.csv --output output\6_figures
+
+# 7b) Partial-Mantel-Test: sind Standorte gleichen Landschaftstyps in ihrer SoP-Sprache
+#      ähnlicher als Standorte verschiedener Typen - kontrolliert für die Corpus-Grösse
+#      (SoP-aktive Artikel pro Standort). Braucht die Matrizen aus Schritt 7a und hits.csv.
+#      Die Landschaftstypen kommen aus plot_style.SITE_LANDSCAPE_TYPE.
+#      Permutationen/Seed: --n-permutations (Standard 10000), --seed (Standard 42)
+#      erzeugt partial_mantel_results.csv und partial_mantel_sites.csv
+python 7_statistical_analysis\cosine_similarity\partial_mantel_test.py --matrix-presence output\6_figures\site_cosine_similarity_presence.csv --matrix-freq output\6_figures\site_cosine_similarity_freq.csv --hits output\4_analysis\hits.csv --output output\7_results\partial_mantel
+
+# 7c) Kruskal-Wallis + Post-hoc Mann-Whitney (Kategorien zwischen Landschaftstypen)
+#     erzeugt kruskal_wallis_results.csv und posthoc_mannwhitney_results.csv
+#     (Ordnername enthält Klammern -> Pfad in Anführungszeichen; Dateiname enthält "+")
+python "7_statistical_analysis\category_frequency_(KruskalWallis)\category_landscape_test_SoP+1.py" --hits output\4_analysis\hits.csv --articles output\4_analysis\articles.csv --output output\7_results\landschafts_signifikanz
+
+# 7d) LaTeX-Signifikanzmatrix aus den Post-hoc-Ergebnissen  (erzeugt posthoc_matrix.csv + .tex)
+python "7_statistical_analysis\category_frequency_(KruskalWallis)\build_posthoc_matrix.py" --posthoc output\7_results\landschafts_signifikanz\posthoc_mannwhitney_results.csv --output output\7_results\posthoc_matrix
+
+# 7e) LaTeX-Detailtabellen (Appendix)
+python "7_statistical_analysis\category_frequency_(KruskalWallis)\build_posthoc_detail_tables.py" --posthoc output\7_results\landschafts_signifikanz\posthoc_mannwhitney_results.csv --hits output\4_analysis\hits.csv --articles output\4_analysis\articles.csv --output output\7_results\posthoc_detail_tables.tex
+
