@@ -40,7 +40,7 @@ $env:PYTHONPATH = "$PWD\6_visualisations"   # gilt nur für das aktuelle Fenster
 
 ## Daten (nicht im Repo)
 
-Die folgenden Ordner sind in `.gitignore` und müssen selbst angelegt werden;
+Die folgenden Ordner müssen selbst angelegt werden;
 sie enthalten Drittdaten, die nicht weitergegeben werden dürfen (Swissdox-
 Lizenz bzw. swisstopo):
 
@@ -59,8 +59,7 @@ Im Repo enthalten sind die Lexika in `lexica/`:
 **Dateinamen:** Der Code erwartet die internen Standortnamen `oeschinensee`,
 `seealpsee`, `thur_thurauen`, `reuss_bremgarten`, `robenhuserriet`, `aegeriried`,
 `ufschoetti`, `zuerichhorn`, `hochwacht_laegern`, `hochwacht_pfannenstiel`
-(ohne Umlaute, ohne `_raw`). Der Umbenennungsschritt steht in
-`python_befehle.txt`, Abschnitt 0b.
+(ohne Umlaute, ohne `_raw`). 
 
 ## Pipeline
 
@@ -76,10 +75,3 @@ Alle Befehle mit korrekten relativen Pfaden stehen in
 | 5 | `5_queries/` | Abfragen auf der Treffertabelle (u.a. Grundlage der Wordclouds) |
 | 6 | `6_visualisations/` | Diagramme und Wordclouds |
 | 7 | `7_statistical_analysis/` | Cosine Similarity, Partial-Mantel-Test, Kruskal-Wallis, Post-hoc-Tests |
-
-## Hinweise
-
-- `generate_wordclouds.py` (Schritt 6) nutzt die Schrift Segoe UI (`C:\Windows\Fonts\segoeui.ttf`).
-- `inspect_toponym_anchors.py` liegt in `4_frequency_analysis/` und ist ein
-  Hilfsskript zur Kontrolle der Toponym-Anker.
-- Die Zufallsauswahl in `sampling.py` ist über `--seed` reproduzierbar (Standard 42).
